@@ -9,7 +9,7 @@
     "baseName": "loggingmodule",
     "packageName": "za.co.tman.logging",
     "packageFolder": "za/co/tman/logging",
-    "serverPort": "8085",
+    "serverPort": "8095",
     "authenticationType": "jwt",
     "cacheProvider": "hazelcast",
     "enableHibernateCache": false,
