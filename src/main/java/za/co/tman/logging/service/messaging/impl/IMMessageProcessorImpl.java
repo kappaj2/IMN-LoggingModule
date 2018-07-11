@@ -1,20 +1,15 @@
 package za.co.tman.logging.service.messaging.impl;
 
-import java.io.IOException;
-import java.time.Instant;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import za.co.tman.logging.domain.GenericMessagesReceived;
+import za.co.tman.logging.enums.EventType;
 import za.co.tman.logging.enums.PubSubMessageType;
-import za.co.tman.logging.repository.GenericMessagesReceivedRepository;
 import za.co.tman.logging.service.messaging.IMMessageProcessor;
-import za.co.tman.logging.service.messaging.dto.InterModulePubSubMessage;
+import za.co.tman.logging.service.messaging.InterModulePubSubMessage;
 
 
 @Component(value = "imMessageProcessor")
@@ -22,88 +17,41 @@ public class IMMessageProcessorImpl implements IMMessageProcessor {
     
     private final Logger log = LoggerFactory.getLogger(getClass());
     
-    @Autowired
-    private ObjectMapper objectMapper;
-    
-    @Autowired
-    private GenericMessagesReceivedRepository repository;
-    
     @Override
-    public void processMessageReceived(Message<?> message) {
-        PubSubMessageType messageType = PubSubMessageType.GENERIC;
+    public void processMessageReceived(InterModulePubSubMessage interModulePubSubMessage) {
         
-        String messageId = null;
-        if (message.getHeaders().containsKey("id")) {
-            messageId = message.getHeaders().get("id").toString();
-        }
-        if (message.getHeaders().containsKey("PubSubMessageType")) {
-            String mes = message.getHeaders().get("PubSubMessageType").toString();
-            messageType = PubSubMessageType.findPubSubMessageType(mes);
-        }
+        Map<String, String> headersMap = interModulePubSubMessage.getMessageHeaders();
+        
+        String messageId = interModulePubSubMessage.getMessageId();
         log.info("MessageId : " + messageId);
         
-        String payload = "";
+        if (headersMap.containsKey("PubSubMessageType")) {
+            String mes = headersMap.get("PubSubMessageType");
+        }
+        
+        PubSubMessageType messageType = PubSubMessageType.INCIDENT;
         
         switch (messageType) {
             case GENERIC:
                 try {
-                    
                     log.info("Generic message received ...");
-                    InterModulePubSubMessage inboundMessage = objectMapper
-                        .readValue(message.getPayload().toString(), InterModulePubSubMessage.class);
                     
-                    GenericMessagesReceived gm = new GenericMessagesReceived();
-                    
-                    gm.setDateReceived(Instant.now());
-                    gm.setEventTypeCode(inboundMessage.getEventType().getEventTypeCode());
-                    gm.setIncidentDescription(inboundMessage.getIncidentDescription());
-                    gm.setIncidentHeader(inboundMessage.getIncidentHeader());
-                    gm.setIncidentNumber(
-                        inboundMessage.getIncidentNumber() == null ? 0L : inboundMessage.getIncidentNumber());
-                    gm.setIncidentPriorityCode(inboundMessage.getIncidentPriority().getPriorityCode());
-                    gm.setMessageId(messageId);
-                    gm.setOriginatingModule(inboundMessage.getOriginatingApplicationModuleName());
-                    gm.setMessageDateCreated(inboundMessage.getMessageDateCreated());
-                    gm.setOperatorName(inboundMessage.getOperatorName());
-                    gm.setPayload(message.getPayload().toString());
-                    gm.setPubSubMessageTypeCode(inboundMessage.getPubSubMessageType().getMessageTypeCode());
-                    
-                    repository.save(gm);
-                    
-                } catch (IOException ioe) {
+                } catch (Exception ioe) {
                     log.error("Error parsing payload : ", ioe.getMessage());
                 }
                 break;
             case INCIDENT:
                 try {
                     
-                    InterModulePubSubMessage inboundMessage = objectMapper
-                        .readValue(message.getPayload().toString(), InterModulePubSubMessage.class);
+                    EventType eventType = interModulePubSubMessage.getEventType();
+                    log.info("Received eventType : " + eventType.toString());
                     
-                    GenericMessagesReceived gm = new GenericMessagesReceived();
-                    
-                    gm.setDateReceived(Instant.now());
-                    gm.setEventTypeCode(inboundMessage.getEventType().getEventTypeCode());
-                    gm.setIncidentDescription(inboundMessage.getIncidentDescription());
-                    gm.setIncidentHeader(inboundMessage.getIncidentHeader());
-                    gm.setIncidentNumber(inboundMessage.getIncidentNumber());
-                    gm.setIncidentPriorityCode(inboundMessage.getIncidentPriority().getPriorityCode());
-                    gm.setMessageId(messageId);
-                    gm.setOriginatingModule(inboundMessage.getOriginatingApplicationModuleName());
-                    gm.setMessageDateCreated(inboundMessage.getMessageDateCreated());
-                    gm.setOperatorName(inboundMessage.getOperatorName());
-                    gm.setPayload(message.getPayload().toString());
-                    gm.setPubSubMessageTypeCode(inboundMessage.getPubSubMessageType().getMessageTypeCode());
-                    
-                    repository.save(gm);
-                    
-                } catch (IOException io) {
+                } catch (Exception io) {
                     io.printStackTrace();
                 }
                 break;
             default:
-                payload = "Unknown message format received : ";
+                log.error("Unknonwn message type ");
         }
-        log.info("Payload   => " + payload);
     }
 }
